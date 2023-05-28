@@ -36,7 +36,6 @@ int main(int argc, char* argv[]) {
             c = '_';
 
     std::string id = fileName + "_" + extension;
-    std::cout << id << std::endl;
 
     std::ofstream fileOut( id + ".h");
     if (!fileOut)
@@ -48,13 +47,14 @@ int main(int argc, char* argv[]) {
 
     fileOut << "#ifndef RESOURCE_" << id << "_H\n#define RESOURCE_" << id << "_H\n\n";
     fileOut << "#include <memory>\n#include <initializer_list>\n\n";
-    fileOut << "void " << id << "(std::unique_ptr<unsigned char[]>& bytes_out, size_t& count_out)\n{\n";
-    fileOut << "    std::initializer_list<unsigned char> values =\n    {\n";
+    fileOut << "namespace res\n{\n";
+    fileOut << "    void " << id << "(std::unique_ptr<unsigned char[]>& bytes_out, size_t& count_out)\n    {\n";
+    fileOut << "        std::initializer_list<unsigned char> values =\n        {\n";
 
     unsigned char byte = 0;
     uint8_t row = 0;
     bool isFirst = true;
-    fileOut << "        ";
+    fileOut << "            ";
     while (fileIn.read(reinterpret_cast<char*>(&byte), sizeof(byte)))
 	{
         if (!isFirst)
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
             if (++row == 16)
             {
                 row = 0;
-                fileOut << std::endl << "        ";
+                fileOut << std::endl << "            ";
             }
         }
         else
@@ -72,11 +72,12 @@ int main(int argc, char* argv[]) {
 		fileOut << byteNotation(byte);
 	}
 
-    fileOut << "\n    };\n\n";
-    fileOut << "    const size_t size = values.size();\n";
-    fileOut << "    bytes_out = std::make_unique<unsigned char[]>(size);\n";
-    fileOut << "    std::copy(values.begin(), values.end(), bytes_out.get());\n";
-    fileOut << "    count_out = size;\n";
+    fileOut << "\n        };\n\n";
+    fileOut << "        const size_t size = values.size();\n";
+    fileOut << "        bytes_out = std::make_unique<unsigned char[]>(size);\n";
+    fileOut << "        std::copy(values.begin(), values.end(), bytes_out.get());\n";
+    fileOut << "        count_out = size;\n";
+    fileOut << "    }\n";
     fileOut << "}\n\n#endif // !" << id;
 
     fileOut.close();
