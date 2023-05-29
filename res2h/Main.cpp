@@ -11,16 +11,29 @@ std::string byteNotation(unsigned char byte)
     return ss.str();
 }
 
+void Header(int argc, char* argv[]);
+void CS(int argc, char* argv[]);
+
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cout << "Usage: " << "res2h <filename>" << std::endl;
+    if (argc != 2 && (argc != 3 && (argv[2] != "-cs"))) {
+        std::cout << "Usage: " << "res2h <filename> (-cs)" << std::endl;
         return EXIT_FAILURE;
     }
 
+    if (argc == 3)
+        CS(argc, argv);
+    else
+        Header(argc, argv);
+
+    return 0;
+}
+
+void Header(int argc, char* argv[])
+{
     std::ifstream fileIn(argv[1], std::ios::binary);
     if (!fileIn) {
         std::cout << "Failed to open file: " << argv[1] << std::endl;
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     std::filesystem::path fs = argv[1];
@@ -37,12 +50,12 @@ int main(int argc, char* argv[]) {
 
     std::string id = fileName + "_" + extension;
 
-    std::ofstream fileOut( id + ".h");
+    std::ofstream fileOut(id + ".h");
     if (!fileOut)
     {
         std::cout << "Failed to create out file" << std::endl;
         fileIn.close();
-        return EXIT_FAILURE;
+        exit( EXIT_FAILURE);
     }
 
     fileOut << "#ifndef RESOURCE_" << id << "_H\n#define RESOURCE_" << id << "_H\n\n";
@@ -56,7 +69,7 @@ int main(int argc, char* argv[]) {
     bool isFirst = true;
     fileOut << "            ";
     while (fileIn.read(reinterpret_cast<char*>(&byte), sizeof(byte)))
-	{
+    {
         if (!isFirst)
         {
             fileOut << ", ";
@@ -69,8 +82,8 @@ int main(int argc, char* argv[]) {
         else
             isFirst = false;
 
-		fileOut << byteNotation(byte);
-	}
+        fileOut << byteNotation(byte);
+    }
 
     fileOut << "\n        };\n\n";
     fileOut << "        const size_t size = values.size();\n";
@@ -82,5 +95,69 @@ int main(int argc, char* argv[]) {
 
     fileOut.close();
     fileIn.close();
-    return 0;
+}
+
+void CS(int argc, char* argv[])
+{
+    std::ifstream fileIn(argv[1], std::ios::binary);
+    if (!fileIn) {
+        std::cout << "Failed to open file: " << argv[1] << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    std::filesystem::path fs = argv[1];
+    std::string fileName = fs.filename().u8string();
+    std::string extension = fs.extension().u8string();
+    extension = extension.substr(1);
+    while (fileName.back() != '.')
+        fileName.pop_back();
+    fileName.pop_back();
+
+    for (char& c : fileName)
+        if (c == ' ' || c == '-' || c == '.')
+            c = '_';
+
+    std::string id = fileName + "_" + extension;
+
+    std::ofstream fileOut(id + ".cs");
+    if (!fileOut)
+    {
+        std::cout << "Failed to create out file" << std::endl;
+        fileIn.close();
+        exit(EXIT_FAILURE);
+    }
+
+    fileOut << "namespace Resource\n{\n";
+    fileOut << "    internal static class " << id << "\n    {\n";
+    fileOut << "        public static void Data(out byte[] data)\n        {\n";
+    fileOut << "            data = new byte[]\n            {\n";
+
+    unsigned char byte = 0;
+    uint8_t row = 0;
+    bool isFirst = true;
+    fileOut << "                ";
+    while (fileIn.read(reinterpret_cast<char*>(&byte), sizeof(byte)))
+    {
+        if (!isFirst)
+        {
+            fileOut << ", ";
+            if (++row == 16)
+            {
+                row = 0;
+                fileOut << std::endl << "                ";
+            }
+        }
+        else
+            isFirst = false;
+
+        fileOut << byteNotation(byte);
+    }
+
+    fileOut << "\n            };\n";
+    fileOut << "        }\n";
+    fileOut << "    }\n";
+    fileOut << "}";
+
+    fileOut.close();
+    fileIn.close();
 }
